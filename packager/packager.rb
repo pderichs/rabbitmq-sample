@@ -35,10 +35,8 @@ Thread.new do
         coord_days_queue.publish(daysdiff.to_s, persistent: true)
 
         # Create tasks for calc - one task for each day
-        date = from
-        while date < to
+        (from..to).each do |date| 
           calc_in_queue.publish(date.to_s, persistent: true)
-          date = date + 1.day
         end
       ensure
         calc_ch.close
