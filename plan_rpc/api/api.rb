@@ -3,15 +3,14 @@ require 'bunny'
 require 'securerandom'
 require 'json'
 
-require_relative '../lib/packager_client.rb'
-require_relative '../lib/calc_client.rb'
+require_relative '../lib/bunny_rpc_client.rb'
 
 class ApiServer
   attr_reader :channel
 
   def initialize(channel)
     @channel = channel
-    @packager_client = PackagerClient.new(@channel, 'packager_queue')
+    @packager_client = BunnyRpcClient.new(@channel, 'packager_queue')
   end
 
   def start(queue_name)
@@ -45,7 +44,7 @@ class ApiServer
     # Send day tasks to calc:
     day_tasks.each do |day_task|
       # Thread.new do
-        client = CalcClient.new(that.channel, 'calc_queue')
+        client = BunnyRpcClient.new(that.channel, 'calc_queue')
         result = client.call(day_task)
         puts "  --> #{result}"
       # end
