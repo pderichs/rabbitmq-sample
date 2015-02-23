@@ -10,8 +10,6 @@ class PackagerServer
     from = Date.strptime(task['from'])
     to = Date.strptime(task['to'])
 
-    # Send item count to coordinator
-    daysdiff = (to - from).to_i
     (from..to).map do |day|
       {
         task_id: task['task_id'],
@@ -29,10 +27,8 @@ class PackagerServer
       task = JSON.parse(payload)
       day_tasks = split_into_day_tasks(task)
 
-      result = { task_id: task['task_id'], result: day_tasks }
-
       @x.publish(
-        result.to_json,
+        day_tasks.to_json,
         routing_key: properties.reply_to,
         correlation_id: properties.correlation_id
       )
