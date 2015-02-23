@@ -21,7 +21,8 @@ class ApiServer
       when 'send'
         start_new_call Date.new(2012, 1, 1), Date.new(2012, 1, 5)
       when 'quit'
-        # It might be a bit hard, but... anyway... this is just a test right? ;-)
+        # It might be a bit hard, but... anyway...
+        # this is just a test right? ;-)
         exit
       else
         puts 'enter "send" or "quit"'
@@ -34,7 +35,7 @@ class ApiServer
     task_id = SecureRandom.uuid
 
     # start call
-    payload = { task_id: task_id, from: from, to: to }
+    payload = { task_id: task_id, from: from.to_s, to: to.to_s }
 
     day_tasks = @packager_client.call(payload)
     puts "Result: #{day_tasks}"

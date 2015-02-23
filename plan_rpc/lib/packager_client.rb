@@ -26,7 +26,7 @@ class PackagerClient
   end
 
   def call(days_task)
-    byebug
+    #byebug
     self.call_id = days_task[:task_id]
 
     @x.publish days_task.to_json,
