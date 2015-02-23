@@ -37,10 +37,11 @@ class ApiServer
     # start call
     payload = { task_id: task_id, from: from.to_s, to: to.to_s }
     day_tasks = @packager_client.call(payload)
-    puts "Result: #{day_tasks}"
+    puts "Packager Result: #{day_tasks}"
     that = self
 
     # Send day tasks to calc:
+    puts "Calling calc..."
     day_tasks.each do |day_task|
       result = @calc_client.call(day_task)
       puts "  --> #{result}"

@@ -25,10 +25,10 @@ class BunnyRpcClient
     end
   end
 
-  def call(days_task)
-    self.call_id = days_task['task_id']
+  def call(task)
+    self.call_id = task['task_id']
 
-    @x.publish days_task.to_json,
+    @x.publish task.to_json,
       routing_key:    @server_queue,
       correlation_id: call_id,
       reply_to:       @reply_queue.name
