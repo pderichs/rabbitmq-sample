@@ -1,5 +1,4 @@
 require 'byebug'
-
 require 'bunny'
 require 'securerandom'
 require_relative '../lib/packager_client.rb'
@@ -23,7 +22,7 @@ class ApiServer
       when 'quit'
         # It might be a bit hard, but... anyway...
         # this is just a test right? ;-)
-        exit
+        break
       else
         puts 'enter "send" or "quit"'
         puts ''
@@ -39,10 +38,6 @@ class ApiServer
 
     day_tasks = @packager_client.call(payload)
     puts "Result: #{day_tasks}"
-    # day_tasks.each do |day_task|
-    #   result = @calc_client.calc_for(day_task)
-    #   puts result
-    # end
   end
 end
 
@@ -52,3 +47,8 @@ ch = conn.create_channel
 
 server = ApiServer.new(ch)
 server.start 'api_queue'
+
+ch.close
+conn.close
+puts 'Bye.'
+puts ''

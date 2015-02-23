@@ -12,7 +12,12 @@ class PackagerServer
 
     # Send item count to coordinator
     daysdiff = (to - from).to_i
-    (from..to).to_a
+    (from..to).map do |day|
+      {
+        task_id: task['task_id'],
+        date: day
+      }
+    end
   end
 
   def start(queue_name)
@@ -22,9 +27,9 @@ class PackagerServer
     @q.subscribe(block: true) do |delivery_info, properties, payload|
       puts "Got #{payload}"
       task = JSON.parse(payload)
-      days = split_into_day_tasks(task)
+      day_tasks = split_into_day_tasks(task)
 
-      result = { task_id: task['task_id'], result: days }
+      result = { task_id: task['task_id'], result: day_tasks }
 
       @x.publish(
         result.to_json,
@@ -35,7 +40,6 @@ class PackagerServer
   end
 end
 
-
 conn = Bunny.new
 conn.start
 ch = conn.create_channel
@@ -45,6 +49,10 @@ begin
   puts 'Packager: Awaiting RPC requests'
   server.start 'packager_queue'
 rescue Interrupt => _
+ensure
   ch.close
   conn.close
 end
+
+puts 'Bye.'
+puts ''
