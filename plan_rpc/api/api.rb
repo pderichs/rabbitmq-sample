@@ -43,14 +43,10 @@ class ApiServer
     that = self
 
     # Send day tasks to calc:
-    threads = day_tasks.map do |day_task|
-      Thread.new(@calc_client, @channel, day_task) do |client, channel, task|
-        result = client.call(task)
-        puts "  --> #{result}"
-      end
+    day_tasks.each do |day_task|
+      result = @calc_client.call(day_task)
+      puts "  --> #{result}"
     end
-
-    threads.each { |t| t.join }
   end
 end
 
