@@ -14,7 +14,7 @@ class CalcServer
       puts "Got #{payload}"
       task = JSON.parse(payload)
 
-      result = { task_id: task['task_id'], day: task['day'], result: 42 }
+      result = { task_id: task['task_id'], day: task['date'], result: 42 }
 
       @x.publish(
         result.to_json,

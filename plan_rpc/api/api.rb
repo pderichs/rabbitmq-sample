@@ -11,6 +11,7 @@ class ApiServer
   def initialize(channel)
     @channel = channel
     @packager_client = BunnyRpcClient.new(@channel, 'packager_queue')
+    @calc_client = BunnyRpcClient.new(channel, 'calc_queue')
   end
 
   def start(queue_name)
@@ -42,15 +43,14 @@ class ApiServer
     that = self
 
     # Send day tasks to calc:
-    day_tasks.each do |day_task|
-      # Thread.new do
-        client = BunnyRpcClient.new(that.channel, 'calc_queue')
-        result = client.call(day_task)
+    threads = day_tasks.map do |day_task|
+      Thread.new(@calc_client, @channel, day_task) do |client, channel, task|
+        result = client.call(task)
         puts "  --> #{result}"
-      # end
+      end
     end
 
-    #threads.each { |t| t.join }
+    threads.each { |t| t.join }
   end
 end
 
