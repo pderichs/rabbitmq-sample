@@ -23,8 +23,6 @@ class ApiServer
       when 'send'
         start_new_call Date.new(2012, 1, 1), Date.new(2012, 1, 5)
       when 'quit', 'exit'
-        # It might be a bit hard, but... anyway...
-        # this is just a test right? ;-)
         break
       else
         puts 'enter "send" or "quit"'
