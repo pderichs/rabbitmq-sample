@@ -6,6 +6,7 @@ require 'securerandom'
 class ApiServer
   CALC_RESULTS = 'app.calc.results'.freeze
   PACKAGER_TASKS = 'app.packager.tasks'.freeze
+  PACKAGER_DAYCOUNT_RESULT = 'app.packager.daycount'.freeze
 
   attr_reader :connection
 
@@ -15,6 +16,10 @@ class ApiServer
     create_calc_results_queue
     create_packager_daycount_queue
     subscribe_to_queues
+
+    # # Storing results by task id
+    # @results = {}
+    # @results_lock = Mutex.new
   end
 
   def start_command_line
@@ -36,12 +41,12 @@ class ApiServer
     @calc_results_channel.close
     @packager_daycount_channel.close
     @channel.close
-    connection.close if @conn != nil
+    connection.close
   end
 
   def send(task_count=1)
     id = SecureRandom.uuid
-    task = { 'from' =>'20120101', 'to' => '20120105'}
+    task = { 'task_id' => id, 'from' =>'20120101', 'to' => '20120105'}
     @packager_tasks_queue.publish(task.to_json, persistent: true)
   end
 
@@ -64,7 +69,9 @@ class ApiServer
 
   def create_packager_daycount_queue
     @packager_daycount_channel = connection.create_channel
-    @packager_daycount_queue = @packager_daycount_channel.queue(CALC_RESULTS)
+    @packager_daycount_queue = @packager_daycount_channel.queue(
+      PACKAGER_DAYCOUNT_RESULT
+    )
   end
 
   def subscribe_to_queues
@@ -74,18 +81,29 @@ class ApiServer
     @calc_results_queue.subscribe(opts) do |delivery_info, properties, body|
       puts 'Got calc result!'
       puts ''
+
+      result = JSON.parse(body)
+      puts "  --> #{result}"
+      # add_result result
+
       @calc_results_channel.ack(delivery_info.delivery_tag)
     end
 
     # Handling Day results
     @packager_daycount_queue.subscribe(opts) do |delivery_info, _props, body|
-      days = body.to_i
-      puts "Got days: #{days}"
+      result = JSON.parse(body)
+      days = result['day_count']
+      task_id = result['task_id']
+      puts "Got days: #{days} (#{task_id})"
       puts ''
 
       @packager_daycount_channel.ack(delivery_info.delivery_tag)
     end
   end
+
+  # def add_result(result)
+  #   @results_lock.synchronize { @results[result['task_id']] = result }
+  # end
 end
 
 

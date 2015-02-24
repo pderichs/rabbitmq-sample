@@ -15,9 +15,11 @@ Thread.new do
   in_q.subscribe(manual_ack: true, block: true) do |delivery_info, properties, body|
     puts 'Got message'
 
+    task = JSON.parse(body)
+
     coord_ch = conn.create_channel
     begin
-      coord_days_queue = coord_ch.queue('app.coordinator.days')
+      coord_days_queue = coord_ch.queue('app.packager.daycount')
 
       calc_ch = conn.create_channel
       begin
@@ -32,11 +34,14 @@ Thread.new do
         daysdiff = (to - from).to_i
         puts "Diff in days: #{daysdiff}"
         # Send day count to coordinator
-        coord_days_queue.publish(daysdiff.to_s, persistent: true)
+        result = { 'task_id' => task['task_id'], 'day_count' => daysdiff }
+        coord_days_queue.publish(result.to_json, persistent: true)
 
         # Create tasks for calc - one task for each day
-        (from..to).each do |date| 
-          calc_in_queue.publish(date.to_s, persistent: true)
+        calc_task = { 'task_id' => task['task_id'] }
+        (from..to).each do |date|
+          calc_task['date'] = date.to_s
+          calc_in_queue.publish(calc_task.to_json, persistent: true)
         end
       ensure
         calc_ch.close
@@ -50,3 +55,6 @@ Thread.new do
 end
 
 s = Readline.readline('> ')
+
+ch.close
+conn.close
