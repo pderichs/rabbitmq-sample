@@ -21,9 +21,9 @@ Thread.new do
       puts "Got new calc message -> #{task}"
 
       # Simulate hard work
-      sleep 1
+      # sleep 1
 
-      # Send a "result" which is pretty positive... like... every time...
+      # Send a "result"
       task['calc_result'] = 42
       coordinator_result_queue.publish(task.to_json, persistent: true)
     rescue Exception => e

@@ -16,10 +16,6 @@ class ApiServer
     create_calc_results_queue
     create_packager_daycount_queue
     subscribe_to_queues
-
-    # # Storing results by task id
-    # @results = {}
-    # @results_lock = Mutex.new
   end
 
   def start_command_line
@@ -44,10 +40,12 @@ class ApiServer
     connection.close
   end
 
-  def send(task_count=1)
-    id = SecureRandom.uuid
-    task = { 'task_id' => id, 'from' =>'20120101', 'to' => '20120105'}
-    @packager_tasks_queue.publish(task.to_json, persistent: true)
+  def send(task_count=1000)
+    task_count.times do
+      id = SecureRandom.uuid
+      task = { 'task_id' => id, 'from' =>'20120101', 'to' => '20120105'}
+      @packager_tasks_queue.publish(task.to_json, persistent: true)
+    end
   end
 
   private
@@ -84,7 +82,7 @@ class ApiServer
 
       result = JSON.parse(body)
       puts "  --> #{result}"
-      # add_result result
+      # Do further work with result (maybe store it elsewhere?)
 
       @calc_results_channel.ack(delivery_info.delivery_tag)
     end
@@ -100,10 +98,6 @@ class ApiServer
       @packager_daycount_channel.ack(delivery_info.delivery_tag)
     end
   end
-
-  # def add_result(result)
-  #   @results_lock.synchronize { @results[result['task_id']] = result }
-  # end
 end
 
 

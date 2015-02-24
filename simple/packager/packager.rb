@@ -30,10 +30,9 @@ Thread.new do
         from = Date.strptime(task['from'],"%Y%m%d")
         to = Date.strptime(task['to'],"%Y%m%d")
 
-        # Send item count to coordinator
+        # Send day count to api
         daysdiff = (to - from).to_i
         puts "Diff in days: #{daysdiff}"
-        # Send day count to coordinator
         result = { 'task_id' => task['task_id'], 'day_count' => daysdiff }
         coord_days_queue.publish(result.to_json, persistent: true)
 
