@@ -1,4 +1,7 @@
 $ ->
+  tasks = []
+  interval = null
+
   html_by_task = (task) ->
     arr = []
     arr.push("<tr id=\"entry_for_#{task.id}\">")
@@ -27,6 +30,23 @@ $ ->
 
     arr.join('')
 
+  start_poller = ->
+    clearInterval(interval) if interval
+    interval = window.setInterval( ->
+      console.log 'Checking state'
+      for task in tasks
+        $.ajax(
+          url: "jobs/#{task.id}.json",
+          method: 'GET',
+          content: 'application/json',
+          success: (data) ->
+            update_entry_status data
+          ,
+          error: ->
+            console.log 'ERROR!'
+        )
+    , 1000)
+
   update_entry_status = (task) ->
     $("#entry_for_#{task.id} td.status").text(task.status)
 
@@ -34,8 +54,8 @@ $ ->
     $('#results').find('tbody')
       .prepend(html_by_task(task))
 
-    item = { id: 'foobar', status: 'Error!' }
-    update_entry_status item
+    # item = { id: 'foobar', status: 'Error!' }
+    # update_entry_status item
 
   $('#btnSend').on 'click', ->
     from = $('#txtFrom').val()
@@ -49,7 +69,9 @@ $ ->
       success: (result) ->
         id = result.id
         alert("Cool! #{id}")
+        tasks.push result
         create_new_task_entry result
+        start_poller()
       ,
       error: (error) ->
         alert('Error!')

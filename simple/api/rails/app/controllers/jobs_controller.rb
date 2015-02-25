@@ -1,7 +1,8 @@
 class JobsController < ApplicationController
   def create
     Rails.logger.info "CREATE!"
-    render json: '{ "id": "foobar", "from": "2012-02-01", "to": "2012-02-05", "duration": "0", "status": "Waiting for result", "text": "CREATE" }'
+    id = SecureRandom.uuid
+    render json: '{ "id": "' + id + '", "from": "2012-02-01", "to": "2012-02-05", "duration": "0", "status": "Waiting for result", "text": "CREATE" }'
   end
 
   def index
