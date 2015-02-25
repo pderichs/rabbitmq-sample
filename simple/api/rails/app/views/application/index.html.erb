@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <%= javascript_include_tag %>
+</head>
+<body>
+  <h1>Job control</h1>
+  <div>
+    <form>
+      <!-- Task count: <input type="text" name="count" /><br /> -->
+      from: <input type="from" name="from" /><br />
+      to: <input type="to" name="to" /><br /><br />
+      <input type="button" id="btnSend" name="btnSend" value="Start job" />
+    </form>
+  </div>
+  <h1>Results</h1>
+  <table id="results" border="1" width="50%">
+    <thead>
+      <th>ID</th>
+      <th>From</th>
+      <th>To</th>
+      <th>Status</th>
+      <th>Duration of task (msecs)</th>
+    </thead>
+  </table>
+</body>
+</html>
