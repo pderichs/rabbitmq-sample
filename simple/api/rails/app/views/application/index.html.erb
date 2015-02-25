@@ -8,8 +8,8 @@
   <div>
     <form>
       <!-- Task count: <input type="text" name="count" /><br /> -->
-      from: <input type="from" name="from" /><br />
-      to: <input type="to" name="to" /><br /><br />
+      from: <input type="from" id="txtFrom" name="from" /> yyyy-mm-dd<br />
+      to: <input type="to" id="txtTo" name="to" /> yyyy-mm-dd<br /><br />
       <input type="button" id="btnSend" name="btnSend" value="Start job" />
     </form>
   </div>
@@ -22,6 +22,8 @@
       <th>Status</th>
       <th>Duration of task (msecs)</th>
     </thead>
+    <tbody>
+    </tbody>
   </table>
 </body>
 </html>
