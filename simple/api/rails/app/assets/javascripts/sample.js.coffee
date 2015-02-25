@@ -1,8 +1,7 @@
 $ ->
-  create_new_task_entry = (task) ->
+  html_by_task = (task) ->
     arr = []
-
-    arr.push('<tr>')
+    arr.push("<tr id=\"entry_for_#{task.id}\">")
 
     arr.push('<td>')
     arr.push(task.id)
@@ -16,18 +15,27 @@ $ ->
     arr.push(task.to)
     arr.push('</td>')
 
-    arr.push('<td>')
-    arr.push('Waiting for result')
+    arr.push('<td class="status">')
+    arr.push(task.status)
     arr.push('</td>')
 
     arr.push('<td>')
-    #arr.push('')
+    arr.push(task.duration)
     arr.push('</td>')
 
     arr.push('</tr>')
 
+    arr.join('')
+
+  update_entry_status = (task) ->
+    $("#entry_for_#{task.id} td.status").text(task.status)
+
+  create_new_task_entry = (task) ->
     $('#results').find('tbody')
-      .prepend(arr.join(''))
+      .prepend(html_by_task(task))
+
+    item = { id: 'foobar', status: 'Error!' }
+    update_entry_status item
 
   $('#btnSend').on 'click', ->
     from = $('#txtFrom').val()
@@ -38,11 +46,9 @@ $ ->
       url: 'jobs.json',
       method: 'POST',
       content: 'application/json',
-      # data: 'json',
       success: (result) ->
         id = result.id
         alert("Cool! #{id}")
-
         create_new_task_entry result
       ,
       error: (error) ->
