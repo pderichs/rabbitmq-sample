@@ -67,7 +67,10 @@ class ApiServer
         expected = task['daycount']
         actual = task['results'].size
         state = actual >= expected ? 'Done.' : 'Pending.'
-        puts "   #{task_id}  -> got: #{actual}, needed: #{expected}   --> #{state}"
+        puts "  #{task_id}  " \
+             " time: #{task['start']} - #{task['end']} " \
+             "-> got: #{actual}, needed: #{expected}" \
+             " --> #{state}"
       end
     end
   end

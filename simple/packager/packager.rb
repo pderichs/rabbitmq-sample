@@ -30,7 +30,7 @@ in_q.subscribe(manual_ack: true) do |delivery_info, properties, body|
       to = Date.strptime(task['to'],"%Y%m%d")
 
       # Send day count to api
-      daysdiff = (to - from).to_i
+      daysdiff = (to - from).to_i + 1
       puts "Diff in days: #{daysdiff}"
       result = { 'task_id' => task['task_id'], 'day_count' => daysdiff }
       coord_days_queue.publish(result.to_json, persistent: true)
