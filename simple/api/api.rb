@@ -2,7 +2,7 @@ require 'bunny'
 require 'json'
 require 'readline'
 require 'securerandom'
-# require 'byebug'
+require 'byebug'
 
 class ApiServer
   CALC_RESULTS = 'app.calc.results'.freeze
@@ -16,10 +16,11 @@ class ApiServer
     create_packager_tasks_queue
     create_calc_results_queue
     create_packager_daycount_queue
-    subscribe_to_queues
 
     @tasks = {}
     @tasks_lock = Mutex.new
+
+    subscribe_to_queues
   end
 
   def start_command_line
@@ -30,14 +31,12 @@ class ApiServer
       case cmds[0]
       when 'send'
         count = 1
-        if cmds.size > 1
-          count = cmds[1].to_i
-        end
+        count = cmds[1].to_i if cmds.size > 1
         send count
       when 'list'
-        done_only = false
-        done_only = (cmds[1] == 'done') if cmds.size > 1
-        list_tasks done_only
+        pending_only = false
+        pending_only = (cmds[1] == 'pending') if cmds.size > 1
+        list_tasks pending_only
       when 'quit', 'exit'
         break
       else
@@ -80,14 +79,14 @@ class ApiServer
     }
   end
 
-  def list_tasks(done_only = false)
+  def list_tasks(pending_only = false)
     @tasks_lock.synchronize do
       @tasks.values.each do |task|
         task_id = task['task_id']
         expected = task['daycount']
         actual = task['results'].size
-        state = actual >= expected ? 'Done.' : 'Pending.'
-        next if done_only && state != 'Done.'
+        state = actual == expected ? 'Done.' : 'Pending.'
+        next if pending_only && state != 'Pending.'
         puts ''
         puts "  #{task_id}  " \
              " time: #{task['start']} - #{task['end']} " \
@@ -125,26 +124,34 @@ class ApiServer
 
     # Handling calc results
     @calc_results_queue.subscribe(opts) do |delivery_info, properties, body|
-      puts 'Got calc result!'
-      puts ''
+      begin
+        puts 'Got calc result!'
+        puts ''
 
-      @tasks_lock.synchronize do
-        time = Time.now
+        # byebug
 
-        result = JSON.parse(body)
-        puts "  --> #{result}"
-        # Do further work with result (maybe store it elsewhere?)
+        @tasks_lock.synchronize do
+          time = Time.now
 
-        id = result['task_id']
-        # byebug unless @tasks.key?(id)
-        task = @tasks.fetch(id)
-        task['results'] << result
-        if task['results'].size >= task['daycount']
-          task['end'] = time
+          result = JSON.parse(body)
+          puts "  --> #{result}"
+          # Do further work with result (maybe store it elsewhere?)
+
+          id = result['task_id']
+          # byebug unless @tasks.key?(id)
+          task = @tasks.fetch(id)
+          task['results'] << result
+          if task['results'].size >= task['daycount']
+            task['end'] = time
+          end
         end
-      end
 
-      @calc_results_channel.ack(delivery_info.delivery_tag)
+        @calc_results_channel.ack(delivery_info.delivery_tag)
+      rescue Exception => e
+        puts "#{e}"
+        byebug
+        # raise
+      end
     end
 
     # Handling Day results
