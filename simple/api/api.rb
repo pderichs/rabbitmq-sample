@@ -16,6 +16,9 @@ class ApiServer
     create_calc_results_queue
     create_packager_daycount_queue
     subscribe_to_queues
+
+    @tasks = {}
+    @tasks_lock = Mutex.new
   end
 
   def start_command_line
@@ -24,7 +27,10 @@ class ApiServer
 
       case cmd
       when 'send'
-        send
+        count = Readline.readline('Count? ').to_i
+        send count
+      when 'list'
+        list_tasks
       when 'quit', 'exit'
         break
       else
@@ -40,15 +46,35 @@ class ApiServer
     connection.close
   end
 
-  def send(task_count=1000)
+  def send(task_count=1)
     task_count.times do
       id = SecureRandom.uuid
-      task = { 'task_id' => id, 'from' =>'20120101', 'to' => '20120105'}
+      task = { 'task_id' => id, 'from' =>'20120101', 'to' => '20120105' }
+      @tasks_lock.synchronize do
+        @tasks[id] = task
+        task['start'] = Time.now
+        task['results'] = []
+      end
       @packager_tasks_queue.publish(task.to_json, persistent: true)
     end
   end
 
   private
+
+  def list_tasks
+    @tasks_lock.synchronize do
+      @tasks.values.each do |task|
+        task_id = task['task_id']
+        expected = task['daycount']
+        actual = task['results'].size
+        state = actual >= expected ? 'Done.' : 'Pending.'
+        puts "  #{task_id}  " \
+             " time: #{task['start']} - #{task['end']} " \
+             "-> got: #{actual}, needed: #{expected}" \
+             " --> #{state}"
+      end
+    end
+  end
 
   def initialize_bunny
     @connection = Bunny.new
@@ -80,9 +106,19 @@ class ApiServer
       puts 'Got calc result!'
       puts ''
 
+      time = Time.now
+
       result = JSON.parse(body)
       puts "  --> #{result}"
       # Do further work with result (maybe store it elsewhere?)
+
+      id = result['task_id']
+      @tasks_lock.synchronize do
+        @tasks[id]['results'] << result
+        if @tasks[id]['results'].size >= @tasks[id]['daycount']
+          @tasks[id]['end'] = time
+        end
+      end
 
       @calc_results_channel.ack(delivery_info.delivery_tag)
     end
@@ -95,6 +131,10 @@ class ApiServer
       puts "Got days: #{days} (#{task_id})"
       puts ''
 
+      @tasks_lock.synchronize do
+        @tasks[task_id]['daycount'] = days
+      end
+
       @packager_daycount_channel.ack(delivery_info.delivery_tag)
     end
   end
@@ -106,6 +146,7 @@ begin
   server.start_command_line
 rescue Exception => e
   puts "ARGH! #{e}"
+  raise
 ensure
   puts 'Bye.'
   puts ''
