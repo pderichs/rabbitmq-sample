@@ -27,7 +27,8 @@ class ApiServer
 
       case cmd
       when 'send'
-        send
+        count = Readline.readline('Count? ').to_i
+        send count
       when 'list'
         list_tasks
       when 'quit', 'exit'
