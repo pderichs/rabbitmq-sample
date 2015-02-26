@@ -20,7 +20,11 @@ class ApiServer
     @tasks = {}
     @tasks_lock = Mutex.new
 
+    @queue = Queue.new
+
     subscribe_to_queues
+
+    start_result_handler_thread
   end
 
   def start_command_line
@@ -52,6 +56,8 @@ class ApiServer
     @packager_daycount_channel.close
     @channel.close
     connection.close
+
+    # @result_handler.abort
   end
 
   def send(task_count=1)
@@ -70,6 +76,27 @@ class ApiServer
   end
 
   private
+
+  def start_result_handler_thread
+    @result_handler = Thread.new do
+      while true do
+        result = @queue.pop
+
+        @tasks_lock.synchronize do
+          time = Time.now
+
+          puts "  --> #{result}"
+
+          id = result['task_id']
+          task = @tasks.fetch(id)
+          task['results'] << result
+          if task['results'].size >= task['daycount']
+            task['end'] = time
+          end
+        end
+      end
+    end
+  end
 
   def create_new_task(id)
     {
@@ -127,32 +154,16 @@ class ApiServer
     # Handling calc results
     @calc_results_queue.subscribe(opts) do |delivery_info, properties, body|
       begin
-        puts 'Got calc result!'
+        puts "#{Thread.current.object_id} Got calc result!"
         puts ''
 
-        # byebug
-
-        @tasks_lock.synchronize do
-          time = Time.now
-
-          result = JSON.parse(body)
-          puts "  --> #{result}"
-          # Do further work with result (maybe store it elsewhere?)
-
-          id = result['task_id']
-          # byebug unless @tasks.key?(id)
-          task = @tasks.fetch(id)
-          task['results'] << result
-          if task['results'].size >= task['daycount']
-            task['end'] = time
-          end
-        end
+        @queue << JSON.parse(body)
 
         @calc_results_channel.ack(delivery_info.delivery_tag)
       rescue Exception => e
         puts "#{e}"
         byebug
-        # raise
+        raise
       end
     end
 
@@ -162,7 +173,7 @@ class ApiServer
         result = JSON.parse(body)
         days = result['day_count']
         task_id = result['task_id']
-        puts "Got days: #{days} (#{task_id})"
+        puts "#{Thread.current.object_id} Got days: #{days} (#{task_id})"
         puts ''
 
         @tasks[task_id]['daycount'] = days
@@ -173,6 +184,7 @@ class ApiServer
   end
 end
 
+puts "Api #{Thread.current.object_id}"
 
 server = ApiServer.new
 begin
