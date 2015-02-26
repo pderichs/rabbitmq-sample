@@ -37,6 +37,8 @@ class ApiServer
         pending_only = false
         pending_only = (cmds[1] == 'pending') if cmds.size > 1
         list_tasks pending_only
+      when 'stop'
+        byebug
       when 'quit', 'exit'
         break
       else
