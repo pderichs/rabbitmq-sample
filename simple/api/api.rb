@@ -2,6 +2,7 @@ require 'bunny'
 require 'json'
 require 'readline'
 require 'securerandom'
+# require 'byebug'
 
 class ApiServer
   CALC_RESULTS = 'app.calc.results'.freeze
@@ -24,17 +25,23 @@ class ApiServer
   def start_command_line
     while true do
       cmd = Readline.readline('> ')
+      cmds = cmd.split(' ')
 
-      case cmd
+      case cmds[0]
       when 'send'
-        count = Readline.readline('Count? ').to_i
+        count = 1
+        if cmds.size > 1
+          count = cmds[1].to_i
+        end
         send count
       when 'list'
-        list_tasks
+        done_only = false
+        done_only = (cmds[1] == 'done') if cmds.size > 1
+        list_tasks done_only
       when 'quit', 'exit'
         break
       else
-        puts 'enter "send" or "quit" or "exit"'
+        puts 'enter "send [count]", "list [done]" or "exit"'
       end
     end
   end
@@ -47,31 +54,46 @@ class ApiServer
   end
 
   def send(task_count=1)
-    task_count.times do
-      id = SecureRandom.uuid
-      task = { 'task_id' => id, 'from' =>'20120101', 'to' => '20120105' }
-      @tasks_lock.synchronize do
-        @tasks[id] = task
-        task['start'] = Time.now
-        task['results'] = []
+    task_count.times do |i|
+      # id = SecureRandom.uuid
+      id = "#{i}"
+      task = create_new_task(id)
+      @tasks[id] = task
+    end
+
+    @tasks_lock.synchronize do
+      @tasks.values.each do |task|
+        @packager_tasks_queue.publish(task.to_json, persistent: true)
       end
-      @packager_tasks_queue.publish(task.to_json, persistent: true)
     end
   end
 
   private
 
-  def list_tasks
+  def create_new_task(id)
+    {
+      'task_id' => id,
+      'from' =>'20120101',
+      'to' => '20120105',
+      'results' => [],
+      'start' => Time.now
+    }
+  end
+
+  def list_tasks(done_only = false)
     @tasks_lock.synchronize do
       @tasks.values.each do |task|
         task_id = task['task_id']
         expected = task['daycount']
         actual = task['results'].size
         state = actual >= expected ? 'Done.' : 'Pending.'
+        next if done_only && state != 'Done.'
+        puts ''
         puts "  #{task_id}  " \
              " time: #{task['start']} - #{task['end']} " \
              "-> got: #{actual}, needed: #{expected}" \
              " --> #{state}"
+        puts ''
       end
     end
   end
@@ -106,17 +128,19 @@ class ApiServer
       puts 'Got calc result!'
       puts ''
 
-      time = Time.now
-
-      result = JSON.parse(body)
-      puts "  --> #{result}"
-      # Do further work with result (maybe store it elsewhere?)
-
-      id = result['task_id']
       @tasks_lock.synchronize do
-        @tasks[id]['results'] << result
-        if @tasks[id]['results'].size >= @tasks[id]['daycount']
-          @tasks[id]['end'] = time
+        time = Time.now
+
+        result = JSON.parse(body)
+        puts "  --> #{result}"
+        # Do further work with result (maybe store it elsewhere?)
+
+        id = result['task_id']
+        # byebug unless @tasks.key?(id)
+        task = @tasks.fetch(id)
+        task['results'] << result
+        if task['results'].size >= task['daycount']
+          task['end'] = time
         end
       end
 
@@ -125,13 +149,13 @@ class ApiServer
 
     # Handling Day results
     @packager_daycount_queue.subscribe(opts) do |delivery_info, _props, body|
-      result = JSON.parse(body)
-      days = result['day_count']
-      task_id = result['task_id']
-      puts "Got days: #{days} (#{task_id})"
-      puts ''
-
       @tasks_lock.synchronize do
+        result = JSON.parse(body)
+        days = result['day_count']
+        task_id = result['task_id']
+        puts "Got days: #{days} (#{task_id})"
+        puts ''
+
         @tasks[task_id]['daycount'] = days
       end
 
