@@ -118,9 +118,9 @@ class ApiServer
         next if pending_only && state != 'Pending.'
         puts ''
         puts "  #{task_id}  " \
-             " time: #{task['start']} - #{task['end']} " \
-             "-> got: #{actual}, needed: #{expected}" \
-             " --> #{state}"
+        " time: #{task['start']} - #{task['end']} " \
+        "-> got: #{actual}, needed: #{expected}" \
+        " --> #{state}"
         puts ''
       end
     end
@@ -137,49 +137,52 @@ class ApiServer
   end
 
   def create_calc_results_queue
-    @calc_results_channel = connection.create_channel
-    @calc_results_queue = @calc_results_channel.queue(CALC_RESULTS)
+    # @calc_results_channel = connection.create_channel
+    # @calc_results_queue = @calc_results_channel.queue(CALC_RESULTS)
   end
 
   def create_packager_daycount_queue
-    @packager_daycount_channel = connection.create_channel
-    @packager_daycount_queue = @packager_daycount_channel.queue(
-      PACKAGER_DAYCOUNT_RESULT
-    )
+    # @packager_daycount_channel = connection.create_channel
+    # @packager_daycount_queue = @packager_daycount_channel.queue(
+    #  PACKAGER_DAYCOUNT_RESULT
+    # )
   end
 
   def subscribe_to_queues
     opts = { manual_ack: true }
 
-    # Handling calc results
-    @calc_results_queue.subscribe(opts) do |delivery_info, properties, body|
-      begin
-        puts "#{Thread.current.object_id} Got calc result!"
-        puts ''
+    if false
+      # Handling calc results
+      @calc_results_queue.subscribe(opts) do |delivery_info, properties, body|
+        begin
+          puts "#{Thread.current.object_id} Got calc result!"
+          puts ''
 
-        @queue << JSON.parse(body)
+          @queue << JSON.parse(body)
 
-        @calc_results_channel.ack(delivery_info.delivery_tag)
-      rescue Exception => e
-        puts "#{e}"
-        byebug
-        raise
-      end
-    end
-
-    # Handling Day results
-    @packager_daycount_queue.subscribe(opts) do |delivery_info, _props, body|
-      @tasks_lock.synchronize do
-        result = JSON.parse(body)
-        days = result['day_count']
-        task_id = result['task_id']
-        puts "#{Thread.current.object_id} Got days: #{days} (#{task_id})"
-        puts ''
-
-        @tasks[task_id]['daycount'] = days
+          @calc_results_channel.ack(delivery_info.delivery_tag)
+        rescue Exception => e
+          puts "#{e}"
+          byebug
+          raise
+        end
       end
 
-      @packager_daycount_channel.ack(delivery_info.delivery_tag)
+
+      # Handling Day results
+      @packager_daycount_queue.subscribe(opts) do |delivery_info, _props, body|
+        @tasks_lock.synchronize do
+          result = JSON.parse(body)
+          days = result['day_count']
+          task_id = result['task_id']
+          puts "#{Thread.current.object_id} Got days: #{days} (#{task_id})"
+          puts ''
+
+          @tasks[task_id]['daycount'] = days
+        end
+
+        @packager_daycount_channel.ack(delivery_info.delivery_tag)
+      end
     end
   end
 end
@@ -197,4 +200,3 @@ ensure
   puts ''
   server.close
 end
-
